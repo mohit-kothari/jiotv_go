@@ -26,6 +26,26 @@ var (
 	Title            string
 	EnableDRM        bool
 	SONY_LIST        = []string{"154", "155", "162", "289", "291", "471", "474", "476", "483", "514", "524", "525", "697", "872", "873", "874", "891", "892", "1146", "1393", "1772", "1773", "1774", "1775"}
+	SONY_CHANNELS    = map[string]string{
+		"291":  "https://dai.google.com/ssai/event/HgaB-u6rSpGx3mo4Xu3sLw/master.m3u8",
+		"471":  "https://dai.google.com/ssai/event/UI4QFJ_uRk6aLxIcADqa_A/master.m3u8",
+		"474":  "https://dai.google.com/ssai/event/rPzF28qORbKZkhci_04fdQ/master.m3u8",
+		"872":  "https://dai.google.com/ssai/event/40H5HfwWTZadFGYkBTqagg/master.m3u8",
+		"697":  "https://dai.google.com/ssai/event/pSVzGmMpQR6jdmwwJg87OQ/master.m3u8",
+		"1146": "https://dai.google.com/ssai/event/-_w3Jbq3QoW-mFCM2YIzxA/master.m3u8",
+		"1393": "https://dai.google.com/ssai/event/H_ZvXWqHRGKpHcdDE5RcDA/master.m3u8",
+		"289":  "https://dai.google.com/ssai/event/oJ-TGgVFSgSMBUoTkauvFQ/master.m3u8",
+		"476":  "https://dai.google.com/ssai/event/Qyqz40bSQriqSuAC7R8_Fw/master.m3u8",
+		"483":  "https://dai.google.com/ssai/event/4Jcu195QTpCNBXGnpw2I6g/master.m3u8",
+		"514":  "https://dai.google.com/ssai/event/4_pnLi2QTe6bRGvvahRbfg/master.m3u8",
+		"523":  "https://dai.google.com/ssai/event/nspQRqO5RmC06VmlPrTwkQ/master.m3u8",
+		"524":  "https://dai.google.com/ssai/event/9kocjiLUSf-erlSrv3d4Mw/master.m3u8",
+		"525":  "https://dai.google.com/ssai/event/S-q8I27RRzmkb-OIdoaiAw/master.m3u8",
+		"162":  "https://dai.google.com/ssai/event/yeYP86THQ4yl7US8Zx5eug/master.m3u8",
+		"891":  "https://dai.google.com/ssai/event/Syu8F41-R1y_JmQ7x0oNxQ/master.m3u8",
+		"892":  "https://dai.google.com/ssai/event/nmQFuHURTYGQBNdUG-2Qdw/master.m3u8",
+		"155":  "https://dai.google.com/ssai/event/DD7fA-HgSUaLyZp9AjRYxQ/master.m3u8",
+	}
 )
 
 const (
@@ -397,10 +417,15 @@ func ChannelsHandler(c *fiber.Ctx) error {
 			}
 
 			var channelURL string
-			if quality != "" {
-				channelURL = fmt.Sprintf("%s/live/%s/%s.m3u8", hostURL, quality, channel.ID)
+			val, ok := SONY_CHANNELS[channel.ID]
+			if ok {
+				channelURL = val
 			} else {
-				channelURL = fmt.Sprintf("%s/live/%s.m3u8", hostURL, channel.ID)
+				if quality != "" {
+					channelURL = fmt.Sprintf("%s/live/%s/%s.m3u8", hostURL, quality, channel.ID)
+				} else {
+					channelURL = fmt.Sprintf("%s/live/%s.m3u8", hostURL, channel.ID)
+				}
 			}
 			channelLogoURL := fmt.Sprintf("%s/%s", logoURL, channel.LogoURL)
 			var groupTitle string
