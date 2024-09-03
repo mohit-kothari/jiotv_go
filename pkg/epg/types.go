@@ -45,14 +45,14 @@ type Desc struct {
 // Programme XML tag structure for EPG
 // Each programme tag represents a show being aired on a channel
 type Programme struct {
-	XMLName  xml.Name `xml:"programme"`    // XML tag name
-	Channel  string   `xml:"channel,attr"` // Channel is attribute of programme tag
-	Start    string   `xml:"start,attr"`   // Start time of the programme
-	Stop     string   `xml:"stop,attr"`    // Stop time of the programme
-	Title    Title    `xml:"title"`        // Title of the programme
-	Desc     Desc     `xml:"desc"`         // Description of the programme
-	Category Category `xml:"category"`     // Category of the programme
-	Icon     Icon     `xml:"icon"`         // Icon of the programme
+	XMLName  xml.Name   `xml:"programme"`    // XML tag name
+	Channel  string     `xml:"channel,attr"` // Channel is attribute of programme tag
+	Start    string     `xml:"start,attr"`   // Start time of the programme
+	Stop     string     `xml:"stop,attr"`    // Stop time of the programme
+	Title    Title      `xml:"title"`        // Title of the programme
+	Desc     Desc       `xml:"desc"`         // Description of the programme
+	Category []Category `xml:"category"`     // Category of the programme
+	Icon     Icon       `xml:"icon"`         // Icon of the programme
 }
 
 // EPG XML tag structure

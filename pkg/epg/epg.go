@@ -25,6 +25,8 @@ const (
 	EPG_URL = "https://jiotv.data.cdn.jio.com/apis/v1.3/getepg/get/?offset=%d&channel_id=%d"
 	// EPG_TASK_ID is the ID of the EPG generation task
 	EPG_TASK_ID = "jiotv_epg"
+	// JIO images urls
+	EPG_POSTER_URL = "https://jiotv.catchup.cdn.jio.com/dare_images/shows/"
 )
 
 // Init initializes EPG generation and schedules it for the next day.
@@ -79,10 +81,20 @@ func Init() {
 	go scheduler.Add(EPG_TASK_ID, time.Until(schedule_time), genepg)
 }
 
+func addCategories(program *Programme, mainCategory string, lang string) {
+	// Add the main category
+	program.Category = append(program.Category, Category{Lang: lang, Value: mainCategory})
+
+	// Check if there's an alternate category for the main category
+	if mainCategory == "TV Show" {
+		program.Category = append(program.Category, Category{Lang: lang, Value: "Series"})
+	}
+}
+
 // NewProgramme creates a new Programme with the given parameters.
 func NewProgramme(channelID int, start, stop, title, desc, category, iconSrc string) Programme {
-	iconURL := fmt.Sprintf("/jtvposter/%s", iconSrc)
-	return Programme{
+	iconURL := fmt.Sprintf("%s%s", EPG_POSTER_URL, iconSrc)
+	program := Programme{
 		Channel: fmt.Sprint(channelID),
 		Start:   start,
 		Stop:    stop,
@@ -94,14 +106,12 @@ func NewProgramme(channelID int, start, stop, title, desc, category, iconSrc str
 			Value: desc,
 			Lang:  "en",
 		},
-		Category: Category{
-			Value: category,
-			Lang:  "en",
-		},
 		Icon: Icon{
 			Src: iconURL,
 		},
 	}
+	addCategories(&program, category, "en")
+	return program
 }
 
 // genXML generates XML EPG from JioTV API and returns it as a byte slice.
