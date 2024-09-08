@@ -120,6 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function saveCustomizations() {
     const data = {};
     let channel_no = 1;
+    gridOptions.api.setFilterModel(null);
     gridOptions.api.forEachNodeAfterFilterAndSort(node => {
       data[node.data.ChannelData.channel_id] = {
         'channel_no': channel_no.toString(),
