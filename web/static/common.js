@@ -24,8 +24,7 @@ const getCurrentTheme = () => {
 
 const toggleTheme = () => {
   // toggle or add attribute "data-theme" to html tag
-  const gridElement = document.querySelector('.ag-root')
-  console.log(gridElement);
+  const gridElement = document.querySelector('.ag-root');
   if (getCurrentTheme() == "dark") {
     localStorage.setItem("theme", "light");
     htmlTag.setAttribute("data-theme", "light");
