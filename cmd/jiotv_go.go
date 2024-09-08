@@ -117,6 +117,7 @@ func JioTVServer(host, port, configPath string, prefork bool) error {
 	app.Get("/mpd/:channelID", handlers.LiveMpdHandler)
 	app.Post("/drm", handlers.DRMKeyHandler)
 	app.Get("/dashtime", handlers.DASHTimeHandler)
-
+	app.Get("/playlist/edit", handlers.PlaylistEditHandler)
+	app.Post("/playlist/save", handlers.SavePlaylistCustomization)
 	return app.Listen(host + ":" + port)
 }

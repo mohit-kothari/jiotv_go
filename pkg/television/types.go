@@ -85,6 +85,12 @@ type LiveURLOutput struct {
 	Mpd         MPD      `json:"mpd"`
 }
 
+type PlaylistCustomization struct {
+	IsDisabled  bool   `json:"is_disabled"`
+	ChannelNo   string `json:"channel_no"`
+	ChannelData Channel
+}
+
 // CategoryMap represents Categories for channels
 var CategoryMap = map[int]string{
 	0:  "All Categories",
@@ -123,6 +129,7 @@ var LanguageMap = map[int]string{
 	15: "Nepali",
 	16: "French",
 	18: "Other",
+	21: "Chhattisgarh",
 }
 
 var SONY_CHANNELS = map[string]string{

@@ -1,0 +1,21 @@
+.toggle-disable {
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 0;
+}
+.toggle-disable svg {
+    width: 20px;
+    height: 20px;
+}
+.toggle-disable.enabled {
+    color: blue;
+}
+.toggle-disable.disabled {
+    color: red;
+}
+
+.disabled-row {
+    background-color: #f2dede; /* Light red background for disabled rows */
+    color: #000;
+}

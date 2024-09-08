@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -20,12 +22,13 @@ import (
 )
 
 var (
-	TV               *television.Television
-	DisableTSHandler bool
-	isLogoutDisabled bool
-	Title            string
-	EnableDRM        bool
-	SONY_LIST        = []string{"154", "155", "162", "289", "291", "471", "474", "476", "483", "514", "524", "525", "697", "872", "873", "874", "891", "892", "1146", "1393", "1772", "1773", "1774", "1775"}
+	TV                    *television.Television
+	DisableTSHandler      bool
+	isLogoutDisabled      bool
+	Title                 string
+	EnableDRM             bool
+	SONY_LIST             = []string{"154", "155", "162", "289", "291", "471", "474", "476", "483", "514", "524", "525", "697", "872", "873", "874", "891", "892", "1146", "1393", "1772", "1773", "1774", "1775"}
+	channelCustomizations map[string]television.PlaylistCustomization
 )
 
 const (
@@ -66,6 +69,74 @@ func Init() {
 		}
 		// Initialize TV object with credentials
 		TV = television.New(credentials)
+	}
+	readCustomizationFromFile()
+}
+
+func marshalCustomizationWithoutChannel(data map[string]television.PlaylistCustomization) ([]byte, error) {
+	// Define a temporary struct to hold only the fields we want
+	type CustomPlaylist struct {
+		IsDisabled bool   `json:"is_disabled"`
+		ChannelNo  string `json:"channel_no"`
+	}
+
+	// Create a new map to store the modified data
+	customMap := make(map[string]CustomPlaylist)
+	for key, value := range data {
+		// Copy only the required fields
+		customMap[key] = CustomPlaylist{
+			IsDisabled: value.IsDisabled,
+			ChannelNo:  value.ChannelNo,
+		}
+	}
+
+	// Marshal the modified map to JSON
+	return json.MarshalIndent(customMap, "", "  ")
+}
+
+func getCustomizationFile() string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	pathPrefix := filepath.Join(homeDir, ".jiotv_go")
+	return filepath.Join(pathPrefix, "customization.json")
+}
+
+func writeCustomizationToFile(data map[string]television.PlaylistCustomization) error {
+	// Marshal the map into JSON format
+	jsonData, err := marshalCustomizationWithoutChannel(data)
+	if err != nil {
+		return fmt.Errorf("failed to marshal data to JSON: %w", err)
+	}
+
+	// Create or open the file
+	file, err := os.Create(getCustomizationFile())
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	defer file.Close()
+
+	// Write the JSON data to the file
+	_, err = file.Write(jsonData)
+	if err != nil {
+		return fmt.Errorf("failed to write data to file: %w", err)
+	}
+
+	return nil
+}
+
+func readCustomizationFromFile() {
+	// Read the file content
+	byteValue, err := os.ReadFile(getCustomizationFile())
+	if err != nil {
+		return
+	}
+
+	// Unmarshal the JSON data into the map
+	err = json.Unmarshal(byteValue, &channelCustomizations)
+	if err != nil {
+		return
 	}
 }
 
@@ -387,6 +458,15 @@ func ChannelsHandler(c *fiber.Ctx) error {
 		m3uContent := "#EXTM3U x-tvg-url=\"" + hostURL + "/epg.xml.gz\"\n"
 		logoURL := hostURL + "/jtvimage"
 		for _, channel := range apiResponse.Result {
+			var channel_no = ""
+			if customization, ok := channelCustomizations[channel.ID]; ok {
+				// Channel is in the disabled map; customize it
+				if customization.IsDisabled {
+					continue
+				} else {
+					channel_no = customization.ChannelNo
+				}
+			}
 
 			if languages != "" && !utils.ContainsString(television.LanguageMap[channel.Language], strings.Split(languages, ",")) {
 				continue
@@ -411,8 +491,13 @@ func ChannelsHandler(c *fiber.Ctx) error {
 			} else {
 				groupTitle = television.CategoryMap[channel.Category]
 			}
-			m3uContent += fmt.Sprintf("#EXTINF:-1 tvg-id=%s tvg-name=%q tvg-logo=%q tvg-language=%q tvg-type=%q group-title=%q, %s\n%s\n",
-				channel.ID, channel.Name, channelLogoURL, television.LanguageMap[channel.Language], television.CategoryMap[channel.Category], groupTitle, channel.Name, channelURL)
+			if channel_no == "" {
+				m3uContent += fmt.Sprintf("#EXTINF:-1 tvg-id=%s tvg-name=%q tvg-logo=%q tvg-language=%q tvg-type=%q group-title=%q, %s\n%s\n",
+					channel.ID, channel.Name, channelLogoURL, television.LanguageMap[channel.Language], television.CategoryMap[channel.Category], groupTitle, channel.Name, channelURL)
+			} else {
+				m3uContent += fmt.Sprintf("#EXTINF:-1 tvg-id=%s tvg-chno=%s tvg-name=%q tvg-logo=%q tvg-language=%q tvg-type=%q group-title=%q, %s\n%s\n",
+					channel.ID, channel_no, channel.Name, channelLogoURL, television.LanguageMap[channel.Language], television.CategoryMap[channel.Category], groupTitle, channel.Name, channelURL)
+			}
 		}
 
 		// Set the Content-Disposition header for file download
@@ -534,4 +619,54 @@ func sonyLivRedirect(c *fiber.Ctx, liveResult *television.LiveURLOutput) error {
 	// remove origin from url
 	return c.Redirect(cho_url.Path+"?"+cho_url.RawQuery, fiber.StatusFound)
 
+}
+
+// PlaylistEditHandler handles the playlist edit page for `/playlist/edit` route
+func PlaylistEditHandler(c *fiber.Ctx) error {
+	// Get all channels
+	channels := television.Channels()
+
+	// Context data for index page
+	indexContext := fiber.Map{
+		"Title":      Title,
+		"Channels":   nil,
+		"Categories": television.CategoryMap,
+		"Languages":  television.LanguageMap,
+	}
+
+	channelList := channels.Result
+	var customizedChannels []television.PlaylistCustomization
+
+	for _, channel := range channelList {
+		if customization, ok := channelCustomizations[channel.ID]; ok {
+			// Channel is in the disabled map; customize it
+			customization.ChannelData = channel
+			customizedChannels = append(customizedChannels, customization)
+		} else {
+			// Channel is not in the disabled map; add it as enabled
+			customizedChannels = append(customizedChannels, television.PlaylistCustomization{
+				IsDisabled:  false,
+				ChannelNo:   "",
+				ChannelData: channel,
+			})
+		}
+	}
+
+	// If language and category are not provided, return all channels
+	indexContext["Channels"] = customizedChannels
+	return c.Render("views/edit_playlist", indexContext)
+}
+
+// SavePlaylistCustomization handles the playlist save api for `/playlist/save` route
+func SavePlaylistCustomization(c *fiber.Ctx) error {
+
+	disabledMap := new(map[string]television.PlaylistCustomization)
+	if err := c.BodyParser(disabledMap); err != nil {
+		fmt.Println(err)
+		return c.SendStatus(503)
+	}
+	c.JSON(disabledMap)
+	channelCustomizations = *disabledMap
+	writeCustomizationToFile(channelCustomizations)
+	return c.SendStatus(200)
 }

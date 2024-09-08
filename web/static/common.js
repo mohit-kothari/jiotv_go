@@ -24,12 +24,22 @@ const getCurrentTheme = () => {
 
 const toggleTheme = () => {
   // toggle or add attribute "data-theme" to html tag
+  const gridElement = document.querySelector('.ag-root')
+  console.log(gridElement);
   if (getCurrentTheme() == "dark") {
     localStorage.setItem("theme", "light");
     htmlTag.setAttribute("data-theme", "light");
+    if (gridElement){
+      gridElement.classList.remove('ag-theme-alpine-dark');
+      gridElement.classList.add('ag-theme-alpine');
+    }
   } else {
     localStorage.setItem("theme", "dark");
     htmlTag.setAttribute("data-theme", "dark");
+    if (gridElement){
+      gridElement.classList.remove('ag-theme-alpine');
+      gridElement.classList.add('ag-theme-alpine-dark');
+    }
   }
 };
 

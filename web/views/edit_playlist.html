@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ .Title }}</title>
+  {{ template "styling" . }}
+  <link rel="stylesheet" href="/static/multiselect.css">
+  <link rel="stylesheet" href="https://unpkg.com/ag-grid-community/styles/ag-grid.css">
+  <link rel="stylesheet" href="https://unpkg.com/ag-grid-community/styles/ag-theme-alpine.css">
+  <link href="/static/edit_playlist.css" rel="stylesheet" />
+</head>
+<body>
+  {{ template "navbar" . }}
+  <div class="container mx-auto">
+    <div class="overflow-x-auto">
+      <div id="portexe-search-root" class="w-full px-2 grid grid-cols-1 gap-2 sm:grid-cols-5 items-center justify-between bg-base-100">
+
+        <select id="selectCategory" name="selectCategory" class="select select-primary select-sm sm:select-md w-full max-w-auto sm:max-w-xs sm:w-auto rounded-xl"></select>
+        <select id="selectLanguages" name="selectLanguages" class="select select-primary select-sm sm:select-md w-full max-w-auto sm:max-w-xs sm:w-auto rounded-xl"></select>
+        <button id="portexe-search-button" class="btn btn-primary btn-sm sm:btn-md w-full sm:w-auto rounded-xl col-span-3 sm:col-span-1">
+          Save Customizations
+        </button>
+        
+      </div>
+      <div class="grid gap-4 p-4">
+        <div id="myGrid" class="ag-theme-alpine" style="height: 85vh; width: 100%;"></div>
+      </div>
+    </div>
+  </div>
+  {{ template "login_dialog" . }}
+  
+  <script>
+    const channelsData = {{ .Channels }}.sort((a, b) => a.channel_no - b.channel_no);
+    const categories = {{ .Categories }};
+    const languages = {{ .Languages }};
+
+    let pre_selected_ctgy = channelsData.map(x => {return !x.is_disabled ? x.ChannelData.channelCategoryId.toString(): ''}).filter((value, index, array) => array.indexOf(value) === index)
+    let pre_selected_langs = channelsData.map(x => {return !x.is_disabled ? x.ChannelData.channelLanguageId.toString(): ''}).filter((value, index, array) => array.indexOf(value) === index)
+
+    let selectedLanguages = Object.keys(languages).map(x => parseInt(x, 10));
+    let selectedCategories = Object.keys(categories).map(x => parseInt(x, 10));
+  </script>
+  <!-- Load AG Grid library -->
+  <script src="https://unpkg.com/ag-grid-community/dist/ag-grid-community.min.noStyle.js"></script>
+  <!-- Your custom scripts -->
+  <script src="/static/index.js"></script>
+  <script src="/static/common.js"></script>
+  <script src="/static/multiselect.js"></script>
+  <script src="/static/edit_playlist.js"></script>
+  {{ template "footer" . }}
+</body>
+</html>
