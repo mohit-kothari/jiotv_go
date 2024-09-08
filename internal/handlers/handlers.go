@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -138,6 +139,24 @@ func readCustomizationFromFile() {
 	if err != nil {
 		return
 	}
+}
+
+func mapChangeCustomization(channelList []television.Channel, customizedChannels []television.PlaylistCustomization) []television.PlaylistCustomization {
+	for _, channel := range channelList {
+		if customization, ok := channelCustomizations[channel.ID]; ok {
+			// Channel is in the disabled map; customize it
+			customization.ChannelData = channel
+			customizedChannels = append(customizedChannels, customization)
+		} else {
+			// Channel is not in the disabled map; add it as enabled
+			customizedChannels = append(customizedChannels, television.PlaylistCustomization{
+				IsDisabled:  false,
+				ChannelNo:   "",
+				ChannelData: channel,
+			})
+		}
+	}
+	return customizedChannels
 }
 
 // ErrorMessageHandler handles error messages
@@ -457,16 +476,20 @@ func ChannelsHandler(c *fiber.Ctx) error {
 		// Create an M3U playlist
 		m3uContent := "#EXTM3U x-tvg-url=\"" + hostURL + "/epg.xml.gz\"\n"
 		logoURL := hostURL + "/jtvimage"
-		for _, channel := range apiResponse.Result {
-			var channel_no = ""
-			if customization, ok := channelCustomizations[channel.ID]; ok {
-				// Channel is in the disabled map; customize it
-				if customization.IsDisabled {
-					continue
-				} else {
-					channel_no = customization.ChannelNo
-				}
+		channelList := apiResponse.Result
+		var customizedChannels []television.PlaylistCustomization
+		customizedChannels = mapChangeCustomization(channelList, customizedChannels)
+		sort.Slice(customizedChannels, func(i, j int) bool {
+			iChannelNo, err1 := strconv.Atoi(customizedChannels[i].ChannelNo)
+			jChannelNo, err2 := strconv.Atoi(customizedChannels[j].ChannelNo)
+			if err1 != nil || err2 != nil {
+				fmt.Println("Error converting ChannelNo to int:", err1, err2)
+				return false // Consider handling this more gracefully depending on requirements
 			}
+			return iChannelNo < jChannelNo
+		})
+		for _, channelItem := range customizedChannels {
+			channel := channelItem.ChannelData
 
 			if languages != "" && !utils.ContainsString(television.LanguageMap[channel.Language], strings.Split(languages, ",")) {
 				continue
@@ -491,12 +514,12 @@ func ChannelsHandler(c *fiber.Ctx) error {
 			} else {
 				groupTitle = television.CategoryMap[channel.Category]
 			}
-			if channel_no == "" {
+			if channelItem.ChannelNo == "" {
 				m3uContent += fmt.Sprintf("#EXTINF:-1 tvg-id=%s tvg-name=%q tvg-logo=%q tvg-language=%q tvg-type=%q group-title=%q, %s\n%s\n",
 					channel.ID, channel.Name, channelLogoURL, television.LanguageMap[channel.Language], television.CategoryMap[channel.Category], groupTitle, channel.Name, channelURL)
 			} else {
 				m3uContent += fmt.Sprintf("#EXTINF:-1 tvg-id=%s tvg-chno=%s tvg-name=%q tvg-logo=%q tvg-language=%q tvg-type=%q group-title=%q, %s\n%s\n",
-					channel.ID, channel_no, channel.Name, channelLogoURL, television.LanguageMap[channel.Language], television.CategoryMap[channel.Category], groupTitle, channel.Name, channelURL)
+					channel.ID, channelItem.ChannelNo, channel.Name, channelLogoURL, television.LanguageMap[channel.Language], television.CategoryMap[channel.Category], groupTitle, channel.Name, channelURL)
 			}
 		}
 
@@ -636,23 +659,7 @@ func PlaylistEditHandler(c *fiber.Ctx) error {
 
 	channelList := channels.Result
 	var customizedChannels []television.PlaylistCustomization
-
-	for _, channel := range channelList {
-		if customization, ok := channelCustomizations[channel.ID]; ok {
-			// Channel is in the disabled map; customize it
-			customization.ChannelData = channel
-			customizedChannels = append(customizedChannels, customization)
-		} else {
-			// Channel is not in the disabled map; add it as enabled
-			customizedChannels = append(customizedChannels, television.PlaylistCustomization{
-				IsDisabled:  false,
-				ChannelNo:   "",
-				ChannelData: channel,
-			})
-		}
-	}
-
-	// If language and category are not provided, return all channels
+	customizedChannels = mapChangeCustomization(channelList, customizedChannels)
 	indexContext["Channels"] = customizedChannels
 	return c.Render("views/edit_playlist", indexContext)
 }
