@@ -491,6 +491,10 @@ func ChannelsHandler(c *fiber.Ctx) error {
 		for _, channelItem := range customizedChannels {
 			channel := channelItem.ChannelData
 
+			if channelItem.IsDisabled {
+				continue
+			}
+
 			if languages != "" && !utils.ContainsString(television.LanguageMap[channel.Language], strings.Split(languages, ",")) {
 				continue
 			}
